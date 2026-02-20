@@ -1,0 +1,82 @@
+name: "Update"
+
+on:
+  schedule:
+    - cron: '8 */4 * * *' # At minute 8 past every 4th hour
+
+jobs:
+  updater:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install WHOIS client
+        run: sudo apt install -y whois parallel gawk
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('utils/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+            ${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          pip install -r utils/requirements.txt
+
+      - name: Download IPs
+        run: |
+          set -euo pipefail
+          set -x
+          find . -name downloader.sh | sort -h | awk '{print "Executing "$1"...";system("bash "$1)}'
+
+      - name: Create All-In-One ranges
+        run: |
+          cat $(find . -name ipv4.txt | sort -h) | sort -V | uniq > all/ipv4.txt
+          cat $(find . -name ipv6.txt | sort -h) | sort -V | uniq > all/ipv6.txt
+
+      - name: Merge ipv4 Ranges
+        run: |
+          set -euo pipefail
+          set -x
+          find . -name ipv4.txt ! -path './all/ipv4.txt' | sort -h | parallel --will-cite -j 1 echo "Merging '{}'"';'python utils/merge.py --source={} '|'  sort -V '>' {.}_merged.txt
+          python utils/expand_cidr.py --source=all/ipv4.txt --target-prefix=24 | sort -V > all/ipv4_merged.txt
+
+      - name: Merge ipv6 Ranges
+        run: |
+          set -euo pipefail
+          set -x
+          find . -name ipv6.txt | sort -h | parallel --will-cite -j 1 echo "Merging '{}'"';'python utils/merge.py --source={} '|' sort -V '>' {.}_merged.txt
+
+      - name: Commit files
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          git remote add github "https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git pull github ${GITHUB_REF} --ff-only
+
+          # Get name & email from 1st commit (needs `fetch-depth: 0` in step `actions/checkout@v3`)
+          git config --local user.email "$(git log --format='%ae' --reverse | head -1)"
+          git config --local user.name "$(git log --format='%an' --reverse | head -1)"
+
+          # try commit
+          git add .
+          if [ -z "$(git status --porcelain)" ]; then
+            echo 'No changes'
+            exit 0
+          fi
+          git commit -m "Auto-update ip ranges"
+
+          # push changes
+          git push github HEAD:${GITHUB_REF}
