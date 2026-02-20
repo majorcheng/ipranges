@@ -3,7 +3,7 @@ name: "Update"
 on:
   workflow_dispatch:
   schedule:
-    - cron: '8 */4 * * *' # At minute 8 past every 4th hour
+    - cron: '8 16 * * *' # At 16:08 UTC every day
 
 jobs:
   updater:
@@ -42,6 +42,7 @@ jobs:
 
       - name: Create All-In-One ranges
         run: |
+          mkdir -p all
           cat $(find . -name ipv4.txt | sort -h) | sort -V | uniq > all/ipv4.txt
           cat $(find . -name ipv6.txt | sort -h) | sort -V | uniq > all/ipv6.txt
 
