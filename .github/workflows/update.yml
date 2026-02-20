@@ -51,8 +51,14 @@ jobs:
       - name: Create All-In-One ranges
         run: |
           mkdir -p all
-          cat $(find . -name ipv4.txt | sort -h) | sort -V | uniq > all/ipv4.txt
-          cat $(find . -name ipv6.txt | sort -h) | sort -V | uniq > all/ipv6.txt
+          cat $(find . -name ipv4.txt \
+            ! -path './all/ipv4.txt' \
+            ! -path './cn/*' \
+            ! -path './non-cn/*' | sort -h) | sort -V | uniq > all/ipv4.txt
+          cat $(find . -name ipv6.txt \
+            ! -path './all/ipv6.txt' \
+            ! -path './cn/*' \
+            ! -path './non-cn/*' | sort -h) | sort -V | uniq > all/ipv6.txt
 
       - name: Merge ipv4 Ranges
         run: |
