@@ -41,7 +41,12 @@ jobs:
         run: |
           set -euo pipefail
           set -x
-          find . -name downloader.sh | sort -h | awk '{print "Executing "$1"...";system("bash "$1)}'
+          find . -name downloader.sh ! -path './non-cn/downloader.sh' | sort -h | awk '{print "Executing "$1"...";system("bash "$1)}'
+
+          if [ -f ./non-cn/downloader.sh ]; then
+            echo "Executing ./non-cn/downloader.sh..."
+            IPRANGES_SKIP_CN_REFRESH=1 bash ./non-cn/downloader.sh
+          fi
 
       - name: Create All-In-One ranges
         run: |
@@ -75,6 +80,30 @@ jobs:
           # Get name & email from 1st commit (needs `fetch-depth: 0` in step `actions/checkout@v3`)
           git config --local user.email "$(git log --format='%ae' --reverse | head -1)"
           git config --local user.name "$(git log --format='%an' --reverse | head -1)"
+
+          # Commit only when any key outputs changed.
+          KEY_FILES=(
+            "all/ipv4.txt"
+            "all/ipv6.txt"
+            "all/ipv4_merged.txt"
+            "cn/ipv4.txt"
+            "cn/ipv4_authoritative.txt"
+            "non-cn/ipv4.txt"
+          )
+
+          CHANGED=0
+          for file in "${KEY_FILES[@]}"; do
+            if [ -n "$(git status --porcelain -- "$file")" ]; then
+              echo "Key file changed: $file"
+              CHANGED=1
+              break
+            fi
+          done
+
+          if [ "$CHANGED" -eq 0 ]; then
+            echo 'No key file changes, skip auto-commit'
+            exit 0
+          fi
 
           # try commit
           git add .
