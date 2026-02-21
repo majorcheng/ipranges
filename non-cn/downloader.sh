@@ -10,7 +10,7 @@ if [ "${IPRANGES_SKIP_CN_REFRESH:-0}" != "1" ]; then
 fi
 
 python3 utils/subtract_ipv4.py \
-  --deny-source cn/ipv4_authoritative.txt \
+  --deny-source cn/ipv4_authoritative.txt non-cn/ipv4_reserved_denylist.txt \
   | sort -V \
   | uniq \
   > non-cn/ipv4.txt

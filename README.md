@@ -22,6 +22,7 @@ IP range downloaders by provider/country, plus generated aggregates.
 - Script: `non-cn/downloader.sh`
 - Method:
   1. Refresh authoritative CN IPv4 list.
-  2. Compute `0.0.0.0/0 - CN` using `utils/subtract_ipv4.py`.
+  2. Compute `0.0.0.0/0 - CN - reserved/private` using `utils/subtract_ipv4.py`.
+  3. Reserved/private deny list is maintained in `non-cn/ipv4_reserved_denylist.txt`.
 - Output:
   - `non-cn/ipv4.txt`
