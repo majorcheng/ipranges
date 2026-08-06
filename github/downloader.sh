@@ -10,8 +10,8 @@ set -x
 curl -s https://api.github.com/meta > /tmp/github.json
 
 
-# get all prefixes without some keys
-jq 'del(.["ssh_keys", "verifiable_password_authentication", "ssh_key_fingerprints", "domains"]) | .[] | .[]' -r /tmp/github.json > /tmp/github-all.txt
+# get all CIDR prefixes
+jq -r '.. | strings | select(test("^[0-9A-Fa-f:.]+/[0-9]+$"))' /tmp/github.json > /tmp/github-all.txt
 
 
 # save ipv4
